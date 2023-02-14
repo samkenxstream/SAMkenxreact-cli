@@ -3,6 +3,7 @@ import {
   getDefaultUserTerminal,
   isPackagerRunning,
   logger,
+  printRunDoctorTip,
 } from '@react-native-community/cli-tools';
 import {Config} from '@react-native-community/cli-types';
 import execa from 'execa';
@@ -11,6 +12,7 @@ import adb from '../runAndroid/adb';
 import getAdbPath from '../runAndroid/getAdbPath';
 import {startServerInNewWindow} from './startServerInNewWindow';
 import {getTaskNames} from '../runAndroid/getTaskNames';
+import {promptForTaskSelection} from '../runAndroid/listAndroidTasks';
 
 export interface BuildFlags {
   mode?: string;
@@ -21,6 +23,7 @@ export interface BuildFlags {
   terminal: string;
   tasks?: Array<string>;
   extraParams?: Array<string>;
+  interactive?: boolean;
 }
 
 export async function runPackager(args: BuildFlags, config: Config) {
@@ -64,10 +67,22 @@ async function buildAndroid(
     );
   }
 
+  let {tasks} = args;
+
+  if (args.interactive) {
+    const selectedTask = await promptForTaskSelection(
+      'build',
+      androidProject.sourceDir,
+    );
+    if (selectedTask) {
+      tasks = [selectedTask];
+    }
+  }
+
   let gradleArgs = getTaskNames(
     androidProject.appName,
     args.mode || args.variant,
-    args.tasks,
+    tasks,
     'assemble',
   );
 
@@ -110,6 +125,7 @@ export function build(gradleArgs: string[], sourceDir: string) {
       cwd: sourceDir,
     });
   } catch (error) {
+    printRunDoctorTip();
     throw new CLIError('Failed to build the app.', error);
   }
 }
@@ -153,8 +169,13 @@ export const options = [
   },
   {
     name: '--extra-params <string>',
-    description: 'Custom properties passed to gradle build command',
+    description: 'Custom params passed to gradle build command',
     parse: (val: string) => val.split(' '),
+  },
+  {
+    name: '--interactive',
+    description:
+      'Explicitly select build type and flavour to use before running a build',
   },
 ];
 

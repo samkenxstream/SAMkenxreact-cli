@@ -16,10 +16,12 @@ import {logger, CLIError} from '@react-native-community/cli-tools';
 import {BuildFlags, buildProject} from '../buildIOS/buildProject';
 import {iosBuildOptions} from '../buildIOS';
 import {Device} from '../../types';
-import listIOSDevices, {promptForDeviceSelection} from './listIOSDevices';
+import listIOSDevices from '../../tools/listIOSDevices';
 import {checkIfConfigurationExists} from '../../tools/checkIfConfigurationExists';
 import {getProjectInfo} from '../../tools/getProjectInfo';
 import {getConfigurationScheme} from '../../tools/getConfigurationScheme';
+import {selectFromInteractiveMode} from '../../tools/selectFromInteractiveMode';
+import {promptForDeviceSelection} from '../../tools/prompts';
 
 export interface FlagsT extends BuildFlags {
   simulator?: string;
@@ -79,9 +81,25 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     xcodeProject.name,
     path.extname(xcodeProject.name),
   );
-  const scheme = args.scheme || inferredSchemeName;
 
-  args.mode = getConfigurationScheme(
+  let scheme = args.scheme || inferredSchemeName;
+  let mode = args.mode;
+
+  if (args.interactive) {
+    const selection = await selectFromInteractiveMode({scheme, mode});
+
+    if (selection.scheme) {
+      scheme = selection.scheme;
+    }
+
+    if (selection.mode) {
+      mode = selection.mode;
+    }
+  }
+
+  const modifiedArgs = {...args, scheme, mode};
+
+  modifiedArgs.mode = getConfigurationScheme(
     {scheme: args.scheme, mode: args.mode},
     sourceDir,
   );
@@ -92,15 +110,15 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     } "${chalk.bold(xcodeProject.name)}"`,
   );
 
-  if (args.listDevices) {
-    if (args.device || args.udid) {
+  const availableDevices = await listIOSDevices();
+  if (modifiedArgs.listDevices) {
+    if (modifiedArgs.device || modifiedArgs.udid) {
       logger.warn(
         `Both ${
-          args.device ? 'device' : 'udid'
+          modifiedArgs.device ? 'device' : 'udid'
         } and "list-devices" parameters were passed to "run" command. We will list available devices and let you choose from one.`,
       );
     }
-    const availableDevices = await listIOSDevices();
     const selectedDevice = await promptForDeviceSelection(availableDevices);
     if (!selectedDevice) {
       throw new CLIError(
@@ -108,16 +126,16 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
       );
     }
     if (selectedDevice.type === 'simulator') {
-      return runOnSimulator(xcodeProject, scheme, args, selectedDevice);
+      return runOnSimulator(xcodeProject, scheme, modifiedArgs, selectedDevice);
     } else {
-      return runOnDevice(selectedDevice, scheme, xcodeProject, args);
+      return runOnDevice(selectedDevice, scheme, xcodeProject, modifiedArgs);
     }
   }
 
-  const devices = await listIOSDevices();
-
-  if (!args.device && !args.udid && !args.simulator) {
-    const bootedDevices = devices.filter(({type}) => type === 'device');
+  if (!modifiedArgs.device && !modifiedArgs.udid && !modifiedArgs.simulator) {
+    const bootedDevices = availableDevices.filter(
+      ({type, isAvailable}) => type === 'device' && isAvailable,
+    );
 
     const simulators = getSimulators();
     const bootedSimulators = Object.keys(simulators.devices)
@@ -130,7 +148,7 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
       logger.info(
         'No booted devices or simulators found. Launching first available simulator...',
       );
-      return runOnSimulator(xcodeProject, scheme, args);
+      return runOnSimulator(xcodeProject, scheme, modifiedArgs);
     }
 
     logger.info(`Found booted ${booted.map(({name}) => name).join(', ')}`);
@@ -138,45 +156,48 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     return runOnBootedDevicesSimulators(
       scheme,
       xcodeProject,
-      args,
+      modifiedArgs,
       bootedDevices,
       bootedSimulators,
     );
   }
 
-  if (args.device && args.udid) {
+  if (modifiedArgs.device && modifiedArgs.udid) {
     return logger.error(
       'The `device` and `udid` options are mutually exclusive.',
     );
   }
 
-  if (args.udid) {
-    const device = devices.find((d) => d.udid === args.udid);
+  if (modifiedArgs.udid) {
+    const device = availableDevices.find((d) => d.udid === modifiedArgs.udid);
     if (!device) {
       return logger.error(
         `Could not find a device with udid: "${chalk.bold(
-          args.udid,
-        )}". ${printFoundDevices(devices)}`,
+          modifiedArgs.udid,
+        )}". ${printFoundDevices(availableDevices)}`,
       );
     }
     if (device.type === 'simulator') {
-      return runOnSimulator(xcodeProject, scheme, args);
+      return runOnSimulator(xcodeProject, scheme, modifiedArgs);
     } else {
-      return runOnDevice(device, scheme, xcodeProject, args);
+      return runOnDevice(device, scheme, xcodeProject, modifiedArgs);
     }
-  } else if (args.device) {
-    const physicalDevices = devices.filter((d) => d.type !== 'simulator');
-    const device = matchingDevice(physicalDevices, args.device);
+  } else if (modifiedArgs.device) {
+    const physicalDevices = availableDevices.filter(
+      ({type}) => type !== 'simulator',
+    );
+    const device = matchingDevice(physicalDevices, modifiedArgs.device);
     if (device) {
-      return runOnDevice(device, scheme, xcodeProject, args);
+      return runOnDevice(device, scheme, xcodeProject, modifiedArgs);
     }
   } else {
-    runOnSimulator(xcodeProject, scheme, args);
+    runOnSimulator(xcodeProject, scheme, modifiedArgs);
   }
 }
 
 const getSimulators = () => {
   let simulators: {devices: {[index: string]: Array<Device>}};
+
   try {
     simulators = JSON.parse(
       child_process.execFileSync(
@@ -570,6 +591,11 @@ export default {
       name: '--binary-path <string>',
       description:
         'Path relative to project root where pre-built .app binary lives.',
+    },
+    {
+      name: '--list-devices',
+      description:
+        'List all available iOS devices and simulators and let you choose one to run the app. ',
     },
   ],
 };

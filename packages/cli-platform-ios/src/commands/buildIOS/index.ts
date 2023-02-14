@@ -17,10 +17,11 @@ import {
 import {Device} from '../../types';
 import {BuildFlags, buildProject} from './buildProject';
 import {getDestinationSimulator} from '../../tools/getDestinationSimulator';
-import {getDevices} from '../../tools/getDevices';
+import {selectFromInteractiveMode} from '../../tools/selectFromInteractiveMode';
 import {getProjectInfo} from '../../tools/getProjectInfo';
 import {checkIfConfigurationExists} from '../../tools/checkIfConfigurationExists';
 import {getConfigurationScheme} from '../../tools/getConfigurationScheme';
+import listIOSDevices from '../../tools/listIOSDevices';
 
 export interface FlagsT extends BuildFlags {
   configuration?: string;
@@ -30,7 +31,7 @@ export interface FlagsT extends BuildFlags {
   scheme?: string;
 }
 
-function buildIOS(_: Array<string>, ctx: Config, args: FlagsT) {
+async function buildIOS(_: Array<string>, ctx: Config, args: FlagsT) {
   if (!ctx.project.ios) {
     throw new CLIError(
       'iOS project folder not found. Are you sure this is a React Native project?',
@@ -56,13 +57,32 @@ function buildIOS(_: Array<string>, ctx: Config, args: FlagsT) {
   }
 
   const projectInfo = getProjectInfo();
-  checkIfConfigurationExists(projectInfo, args.mode);
+
+  if (args.mode) {
+    checkIfConfigurationExists(projectInfo, args.mode);
+  }
 
   const inferredSchemeName = path.basename(
     xcodeProject.name,
     path.extname(xcodeProject.name),
   );
-  const scheme = args.scheme || inferredSchemeName;
+
+  let scheme = args.scheme || inferredSchemeName;
+  let mode = args.mode;
+
+  if (args.interactive) {
+    const selection = await selectFromInteractiveMode({scheme, mode});
+
+    if (selection.scheme) {
+      scheme = selection.scheme;
+    }
+
+    if (selection.mode) {
+      mode = selection.mode;
+    }
+  }
+
+  const modifiedArgs = {...args, scheme, mode};
 
   args.mode = getConfigurationScheme(
     {scheme: args.scheme, mode: args.mode},
@@ -76,7 +96,7 @@ function buildIOS(_: Array<string>, ctx: Config, args: FlagsT) {
   );
 
   const extendedArgs = {
-    ...args,
+    ...modifiedArgs,
     packager: false,
   };
 
@@ -116,7 +136,7 @@ function buildIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     );
   }
 
-  const devices = getDevices();
+  const devices = await listIOSDevices();
 
   if (args.udid) {
     const device = devices.find((d) => d.udid === args.udid);
@@ -234,6 +254,16 @@ export const iosBuildOptions = [
     name: '--buildFolder <string>',
     description:
       'Location for iOS build artifacts. Corresponds to Xcode\'s "-derivedDataPath".',
+  },
+  {
+    name: '--interactive',
+    description:
+      'Explicitly select which scheme and configuration to use before running a build',
+  },
+  {
+    name: '--extra-params <string>',
+    description: 'Custom params that will be passed to xcodebuild command.',
+    parse: (val: string) => val.split(' '),
   },
 ];
 
