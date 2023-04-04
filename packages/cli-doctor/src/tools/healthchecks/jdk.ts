@@ -1,4 +1,7 @@
 import {join} from 'path';
+
+import {link} from '@react-native-community/cli-tools';
+
 import versionRanges from '../versionRanges';
 import {doesSoftwareNeedToBeFixed} from '../checkInstallation';
 import {HealthCheckInterface} from '../../types';
@@ -10,6 +13,7 @@ import {
 
 export default {
   label: 'JDK',
+  description: 'Required to compile Java code',
   getDiagnostics: async ({Languages}) => ({
     needsToBeFixed: doesSoftwareNeedToBeFixed({
       version:
@@ -50,14 +54,18 @@ export default {
         'JDK installed successfully. Please restart your shell to see the changes',
       );
     } catch (e) {
-      loader.fail(e);
+      loader.fail(e as any);
     }
   },
   runAutomaticFix: async ({logManualInstallation, loader}) => {
     loader.fail();
     logManualInstallation({
       healthcheck: 'JDK',
-      url: 'https://reactnative.dev/docs/environment-setup',
+      url: link.docs('environment-setup', {
+        hash: 'jdk-studio',
+        guide: 'native',
+        platform: 'android',
+      }),
     });
   },
 } as HealthCheckInterface;

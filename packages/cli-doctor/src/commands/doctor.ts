@@ -109,7 +109,7 @@ const getAutomaticFixForPlatform = (
   }
 };
 
-const doctorCommand = (async (_, options) => {
+const doctorCommand = (async (_, options, config) => {
   const loader = getLoader();
 
   loader.start('Running diagnostics...');
@@ -129,11 +129,12 @@ const doctorCommand = (async (_, options) => {
           }
 
           const {
+            description,
             needsToBeFixed,
             version,
             versions,
             versionRange,
-          } = await healthcheck.getDiagnostics(environmentInfo);
+          } = await healthcheck.getDiagnostics(environmentInfo, config);
 
           // Assume that it's required unless specified otherwise
           const isRequired = healthcheck.isRequired !== false;
@@ -145,7 +146,7 @@ const doctorCommand = (async (_, options) => {
             version,
             versions,
             versionRange,
-            description: healthcheck.description,
+            description: description ?? healthcheck.description,
             runAutomaticFix: getAutomaticFixForPlatform(
               healthcheck,
               process.platform,
@@ -213,6 +214,7 @@ const doctorCommand = (async (_, options) => {
       stats,
       loader,
       environmentInfo,
+      config,
     });
   }
 
@@ -248,6 +250,7 @@ const doctorCommand = (async (_, options) => {
           stats,
           loader,
           environmentInfo,
+          config,
         });
 
         process.exit(0);

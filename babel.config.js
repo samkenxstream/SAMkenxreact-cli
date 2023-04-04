@@ -10,7 +10,7 @@ module.exports = {
     [
       require.resolve('@babel/preset-env'),
       {
-        targets: {node: '14'},
+        targets: {node: '16'},
         useBuiltIns: 'entry',
         corejs: '2.x',
       },
@@ -18,6 +18,7 @@ module.exports = {
   ],
   plugins: [
     [require.resolve('@babel/plugin-transform-modules-commonjs'), {lazy: true}],
+    '@babel/plugin-proposal-export-namespace-from',
   ],
   sourceMaps: true,
 };

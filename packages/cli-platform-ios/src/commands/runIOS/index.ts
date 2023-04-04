@@ -12,7 +12,7 @@ import fs from 'fs';
 import chalk from 'chalk';
 import {Config, IOSProjectInfo} from '@react-native-community/cli-types';
 import {getDestinationSimulator} from '../../tools/getDestinationSimulator';
-import {logger, CLIError} from '@react-native-community/cli-tools';
+import {logger, CLIError, link} from '@react-native-community/cli-tools';
 import {BuildFlags, buildProject} from '../buildIOS/buildProject';
 import {iosBuildOptions} from '../buildIOS';
 import {Device} from '../../types';
@@ -22,6 +22,7 @@ import {getProjectInfo} from '../../tools/getProjectInfo';
 import {getConfigurationScheme} from '../../tools/getConfigurationScheme';
 import {selectFromInteractiveMode} from '../../tools/selectFromInteractiveMode';
 import {promptForDeviceSelection} from '../../tools/prompts';
+import getSimulators from '../../tools/getSimulators';
 
 export interface FlagsT extends BuildFlags {
   simulator?: string;
@@ -35,6 +36,12 @@ export interface FlagsT extends BuildFlags {
 }
 
 async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
+  link.setPlatform('ios');
+
+  if (ctx.reactNativeVersion !== 'unknown') {
+    link.setVersion(ctx.reactNativeVersion);
+  }
+
   if (!ctx.project.ios) {
     throw new CLIError(
       'iOS project folder not found. Are you sure this is a React Native project?',
@@ -100,7 +107,7 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
   const modifiedArgs = {...args, scheme, mode};
 
   modifiedArgs.mode = getConfigurationScheme(
-    {scheme: args.scheme, mode: args.mode},
+    {scheme: modifiedArgs.scheme, mode: modifiedArgs.mode},
     sourceDir,
   );
 
@@ -111,7 +118,7 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
   );
 
   const availableDevices = await listIOSDevices();
-  if (modifiedArgs.listDevices) {
+  if (modifiedArgs.listDevices || modifiedArgs.interactive) {
     if (modifiedArgs.device || modifiedArgs.udid) {
       logger.warn(
         `Both ${
@@ -122,7 +129,9 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     const selectedDevice = await promptForDeviceSelection(availableDevices);
     if (!selectedDevice) {
       throw new CLIError(
-        'Failed to select device, please try to run app without "list-devices" command.',
+        `Failed to select device, please try to run app without ${
+          args.listDevices ? 'list-devices' : 'interactive'
+        } command.`,
       );
     }
     if (selectedDevice.type === 'simulator') {
@@ -194,26 +203,6 @@ async function runIOS(_: Array<string>, ctx: Config, args: FlagsT) {
     runOnSimulator(xcodeProject, scheme, modifiedArgs);
   }
 }
-
-const getSimulators = () => {
-  let simulators: {devices: {[index: string]: Array<Device>}};
-
-  try {
-    simulators = JSON.parse(
-      child_process.execFileSync(
-        'xcrun',
-        ['simctl', 'list', '--json', 'devices'],
-        {encoding: 'utf8'},
-      ),
-    );
-  } catch (error) {
-    throw new CLIError(
-      'Could not get the simulator list from Xcode. Please open Xcode and try running project directly from there to resolve the remaining issues.',
-      error,
-    );
-  }
-  return simulators;
-};
 
 async function runOnBootedDevicesSimulators(
   scheme: string,
@@ -596,6 +585,11 @@ export default {
       name: '--list-devices',
       description:
         'List all available iOS devices and simulators and let you choose one to run the app. ',
+    },
+    {
+      name: '--interactive',
+      description:
+        'Explicitly select which scheme and configuration to use before running a build and select device to run the application.',
     },
   ],
 };

@@ -3,6 +3,7 @@ export interface AndroidProjectConfig {
   appName: string;
   packageName: string;
   dependencyConfiguration?: string;
+  unstable_reactLegacyComponentNames?: string[] | null;
 }
 
 export type AndroidProjectParams = {
@@ -11,6 +12,7 @@ export type AndroidProjectParams = {
   manifestPath?: string;
   packageName?: string;
   dependencyConfiguration?: string;
+  unstable_reactLegacyComponentNames?: string[] | null;
 };
 
 export type AndroidDependencyConfig = {
@@ -21,7 +23,6 @@ export type AndroidDependencyConfig = {
   buildTypes: string[];
   libraryName?: string | null;
   componentDescriptors?: string[] | null;
-  androidMkPath?: string | null;
   cmakeListsPath?: string | null;
 };
 
@@ -35,6 +36,5 @@ export type AndroidDependencyParams = {
   buildTypes?: string[];
   libraryName?: string | null;
   componentDescriptors?: string[] | null;
-  androidMkPath?: string | null;
   cmakeListsPath?: string | null;
 };

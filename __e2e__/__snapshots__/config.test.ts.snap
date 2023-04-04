@@ -4,15 +4,29 @@ exports[`shows up current config without unnecessary output 1`] = `
 {
   "root": "<<REPLACED_ROOT>>/TestProject",
   "reactNativePath": "<<REPLACED_ROOT>>/TestProject/node_modules/react-native",
+  "reactNativeVersion": "0.71",
   "dependencies": {},
   "commands": [
     {
       "name": "log-ios",
-      "description": "starts iOS device syslog tail"
+      "description": "starts iOS device syslog tail",
+      "options": [
+        "<<REPLACED>>"
+      ]
     },
     {
       "name": "run-ios",
       "description": "builds your app and starts it on iOS simulator",
+      "examples": [
+        "<<REPLACED>>"
+      ],
+      "options": [
+        "<<REPLACED>>"
+      ]
+    },
+    {
+      "name": "build-ios",
+      "description": "builds your app on iOS simulator",
       "examples": [
         "<<REPLACED>>"
       ],

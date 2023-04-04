@@ -85,7 +85,6 @@ export const dependencyConfig = t
                 buildTypes: t.array().items(t.string()).default([]),
                 libraryName: t.string().allow(null),
                 componentDescriptors: t.array().items(t.string()).allow(null),
-                androidMkPath: t.string().allow(null),
                 cmakeListsPath: t.string().allow(null),
               })
               .allow(null),
@@ -137,7 +136,6 @@ export const projectConfig = t
                 buildTypes: t.array().items(t.string()).default([]),
                 libraryName: t.string().allow(null),
                 componentDescriptors: t.array().items(t.string()).allow(null),
-                androidMkPath: t.string().allow(null),
                 cmakeListsPath: t.string().allow(null),
               })
               .allow(null),
@@ -152,6 +150,10 @@ export const projectConfig = t
           // IOSProjectParams
           .object({
             sourceDir: t.string(),
+            unstable_reactLegacyComponentNames: t
+              .array()
+              .items(t.string())
+              .default([]),
           })
           .default({}),
         android: t
@@ -162,6 +164,10 @@ export const projectConfig = t
             manifestPath: t.string(),
             packageName: t.string(),
             dependencyConfiguration: t.string(),
+            unstable_reactLegacyComponentNames: t
+              .array()
+              .items(t.string())
+              .default([]),
           })
           .default({}),
       })

@@ -1,3 +1,4 @@
+import type {Config} from '@react-native-community/cli-types';
 import type {Ora} from 'ora';
 
 export type Loader = Ora;
@@ -26,7 +27,6 @@ export type EnvironmentInfo = {
   };
   Managers: {
     CocoaPods: AvailableInformation;
-    RubyGems: AvailableInformation;
   };
   SDKs: {
     'iOS SDK': {
@@ -51,6 +51,7 @@ export type EnvironmentInfo = {
   };
   Languages: {
     Java: Information;
+    Ruby: AvailableInformation;
   };
 };
 
@@ -79,16 +80,19 @@ export type RunAutomaticFix = (args: {
     message?: string;
   }) => void;
   environmentInfo: EnvironmentInfo;
+  config?: Config;
 }) => Promise<void> | void;
 
 export type HealthCheckInterface = {
   label: string;
   visible?: boolean | void;
   isRequired?: boolean;
-  description?: string;
+  description: string;
   getDiagnostics: (
     environmentInfo: EnvironmentInfo,
+    config?: Config,
   ) => Promise<{
+    description?: string;
     version?: string;
     versions?: [string];
     versionRange?: string;

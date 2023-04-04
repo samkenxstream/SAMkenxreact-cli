@@ -10,19 +10,33 @@ function tryInstallAppOnDevice(
   adbPath: string,
   device: string,
   androidProject: AndroidProject,
+  selectedTask?: string,
 ) {
   try {
     // "app" is usually the default value for Android apps with only 1 app
     const {appName, sourceDir} = androidProject;
-    const variant = (args.mode || 'debug').toLowerCase();
+
+    const defaultVariant = (args.mode || 'debug').toLowerCase();
+
+    // handle if selected task from interactive mode includes build flavour as well, eg. installProductionDebug should create ['production','debug'] array
+    const variantFromSelectedTask = selectedTask
+      ?.replace('install', '')
+      .split(/(?=[A-Z])/);
+
+    // create path to output file, eg. `production/debug`
+    const variantPath =
+      variantFromSelectedTask?.join('/')?.toLowerCase() ?? defaultVariant;
+    // create output file name, eg. `production-debug`
+    const variantAppName =
+      variantFromSelectedTask?.join('-')?.toLowerCase() ?? defaultVariant;
 
     let pathToApk;
     if (!args.binaryPath) {
-      const buildDirectory = `${sourceDir}/${appName}/build/outputs/apk/${variant}`;
+      const buildDirectory = `${sourceDir}/${appName}/build/outputs/apk/${variantPath}`;
       const apkFile = getInstallApkName(
         appName,
         adbPath,
-        variant,
+        variantAppName,
         device,
         buildDirectory,
       );
@@ -38,7 +52,10 @@ function tryInstallAppOnDevice(
     );
     execa.sync(adbPath, adbArgs, {stdio: 'inherit'});
   } catch (error) {
-    throw new CLIError('Failed to install the app on the device.', error);
+    throw new CLIError(
+      'Failed to install the app on the device.',
+      error as any,
+    );
   }
 }
 

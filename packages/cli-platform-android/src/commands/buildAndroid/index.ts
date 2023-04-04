@@ -38,12 +38,20 @@ export async function runPackager(args: BuildFlags, config: Config) {
   } else {
     // result == 'not_running'
     logger.info('Starting JS server...');
+
     try {
-      startServerInNewWindow(args.port, args.terminal, config.reactNativePath);
-    } catch (error) {
-      logger.warn(
-        `Failed to automatically start the packager server. Please run "react-native start" manually. Error details: ${error.message}`,
+      startServerInNewWindow(
+        args.port,
+        args.terminal,
+        config.root,
+        config.reactNativePath,
       );
+    } catch (error) {
+      if (error instanceof Error) {
+        logger.warn(
+          `Failed to automatically start the packager server. Please run "react-native start" manually. Error details: ${error.message}`,
+        );
+      }
     }
   }
 }
@@ -84,10 +92,11 @@ async function buildAndroid(
     args.mode || args.variant,
     tasks,
     'assemble',
+    androidProject.sourceDir,
   );
 
   if (args.extraParams) {
-    gradleArgs = [...gradleArgs, ...args.extraParams];
+    gradleArgs.push(...args.extraParams);
   }
 
   if (args.activeArchOnly) {
@@ -126,7 +135,7 @@ export function build(gradleArgs: string[], sourceDir: string) {
     });
   } catch (error) {
     printRunDoctorTip();
-    throw new CLIError('Failed to build the app.', error);
+    throw new CLIError('Failed to build the app.', error as Error);
   }
 }
 
@@ -183,5 +192,5 @@ export default {
   name: 'build-android',
   description: 'builds your app',
   func: buildAndroid,
-  options: options,
+  options,
 };

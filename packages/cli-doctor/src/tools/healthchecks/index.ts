@@ -1,5 +1,6 @@
 import nodeJS from './nodeJS';
 import {yarn, npm} from './packageManagers';
+import adb from './adb';
 import jdk from './jdk';
 import watchman from './watchman';
 import ruby from './ruby';
@@ -38,7 +39,6 @@ export const getHealthchecks = ({contributor}: Options): Healthchecks => {
       label: 'Common',
       healthchecks: [
         nodeJS,
-        ruby,
         yarn,
         npm,
         ...(process.platform === 'darwin' ? [watchman] : []),
@@ -47,6 +47,7 @@ export const getHealthchecks = ({contributor}: Options): Healthchecks => {
     android: {
       label: 'Android',
       healthchecks: [
+        adb,
         jdk,
         androidStudio,
         androidSDK,
@@ -58,7 +59,7 @@ export const getHealthchecks = ({contributor}: Options): Healthchecks => {
       ? {
           ios: {
             label: 'iOS',
-            healthchecks: [xcode, cocoaPods, iosDeploy, xcodeEnv],
+            healthchecks: [xcode, ruby, cocoaPods, iosDeploy, xcodeEnv],
           },
         }
       : {}),
